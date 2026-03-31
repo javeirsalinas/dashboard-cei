@@ -172,3 +172,24 @@ elif area == "Gestión Administrativa":
         viajes = st.number_input("Viajes/Viáticos realizados", min_value=0)
         if st.form_submit_button("Cerrar Reporte Gestión"):
             guardar_mision3("gestion", {"presupuesto": pre, "viajes": viajes})
+# --- MÓDULO DE LIMPIEZA (Solo para Administrador) ---
+elif area == "Limpieza de Datos":
+    st.header("⚠️ Panel de Control Crítico")
+    st.warning("Esta acción eliminará TODOS los registros de prueba de la colección seleccionada.")
+    
+    col_a_borrar = st.selectbox("Seleccione Colección a Limpiar", 
+        ["emprendimiento", "vinculacion", "plataformas", "comunicaciones", "gestion"])
+    
+    # Código de seguridad para evitar borrados accidentales
+    confirmacion = st.text_input("Escriba 'BORRAR' para confirmar")
+    
+    if st.button("Ejecutar Limpieza Profunda"):
+        if confirmacion == "BORRAR":
+            docs = db.collection(col_a_borrar).stream()
+            contador = 0
+            for doc in docs:
+                doc.reference.delete()
+                contador += 1
+            st.success(f"🔥 Se han eliminado {contador} registros de {col_a_borrar}.")
+        else:
+            st.error("Confirmación incorrecta.")
