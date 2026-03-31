@@ -45,7 +45,7 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # --- 3. FUNCIONES DE DATOS ---
-def obtener_datos_periodo(coleccion, dias=30):
+def obtener_datos_periodo(coleccion, dias=3650):
     try:
         docs = db.collection(coleccion).stream()
         data = []
@@ -74,14 +74,13 @@ def guardar_mision3(coleccion, data):
     except Exception as e:
         st.error(f"Error al transmitir: {e}")
 
-# --- 4. NAVEGACIÓN LATERAL (ORDEN CORREGIDO) ---
+# --- 4. NAVEGACIÓN LATERAL ---
 st.sidebar.markdown("<h2 style='color: #3B82F6; border:none;'>MISIÓN 3</h2>", unsafe_allow_html=True)
 periodo_label = st.sidebar.radio("Rango de Evolución:", ["Última Semana", "Último Mes", "Histórico Total"])
 dias_filtro = 7 if periodo_label == "Última Semana" else 30 if periodo_label == "Último Mes" else 3650
 
-# Definimos 'area' ANTES de usarla en los condicionales
 area = st.sidebar.selectbox("Panel de Control", 
-    ["Dashboard Ejecutivo", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión Administrativa"])
+    ["Dashboard Ejecutivo", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión Administrativa", "Limpieza de Datos"])
 
 # --- 5. LÓGICA DE MÓDULOS ---
 
@@ -116,12 +115,16 @@ if area == "Dashboard Ejecutivo":
             fig1 = px.bar(df_emp, x='programa', y='registrados', template="plotly_dark", color_discrete_sequence=['#3B82F6'])
             fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig1, use_container_width=True)
+        else:
+            st.info("Sin datos para el periodo seleccionado (Emprendimiento).")
     
     with c2:
         if not df_vin.empty and 'tipo_aliado' in df_vin.columns:
             st.subheader("🤝 Distribución de Alianzas")
             fig2 = px.pie(df_vin, names='tipo_aliado', hole=.5, template="plotly_dark", color_discrete_sequence=['#1E3A8A', '#475569', '#94A3B8'])
             st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("Sin datos para el periodo seleccionado (Vinculación).")
 
     st.markdown("---")
     if not df_emp.empty:
@@ -172,24 +175,27 @@ elif area == "Gestión Administrativa":
         viajes = st.number_input("Viajes/Viáticos realizados", min_value=0)
         if st.form_submit_button("Cerrar Reporte Gestión"):
             guardar_mision3("gestion", {"presupuesto": pre, "viajes": viajes})
-# --- MÓDULO DE LIMPIEZA (Solo para Administrador) ---
+
 elif area == "Limpieza de Datos":
-    st.header("⚠️ Panel de Control Crítico")
-    st.warning("Esta acción eliminará TODOS los registros de prueba de la colección seleccionada.")
+    st.header("🧹 Panel de Mantenimiento")
+    st.info("Utilice este módulo para eliminar registros de prueba antes de reportes oficiales.")
     
-    col_a_borrar = st.selectbox("Seleccione Colección a Limpiar", 
+    col_a_borrar = st.selectbox("Seleccione Área a Limpiar", 
         ["emprendimiento", "vinculacion", "plataformas", "comunicaciones", "gestion"])
     
-    # Código de seguridad para evitar borrados accidentales
-    confirmacion = st.text_input("Escriba 'BORRAR' para confirmar")
+    st.warning(f"Atención: Se eliminarán todos los documentos en la colección: **{col_a_borrar}**")
+    confirmacion = st.text_input("Para proceder, escriba la palabra 'BORRAR' en mayúsculas:")
     
-    if st.button("Ejecutar Limpieza Profunda"):
+    if st.button("Ejecutar Limpieza Permanente"):
         if confirmacion == "BORRAR":
-            docs = db.collection(col_a_borrar).stream()
-            contador = 0
-            for doc in docs:
-                doc.reference.delete()
-                contador += 1
-            st.success(f"🔥 Se han eliminado {contador} registros de {col_a_borrar}.")
+            try:
+                docs = db.collection(col_a_borrar).stream()
+                contador = 0
+                for doc in docs:
+                    doc.reference.delete()
+                    contador += 1
+                st.success(f"🔥 Operación exitosa. Se eliminaron {contador} registros de {col_a_borrar}.")
+            except Exception as e:
+                st.error(f"Error en el proceso: {e}")
         else:
-            st.error("Confirmación incorrecta.")
+            st.error("La palabra de confirmación no coincide.")
