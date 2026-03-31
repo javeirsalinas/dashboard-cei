@@ -1,66 +1,63 @@
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore
 import pandas as pd
-import plotly.express as px
 
-# 1. Configuración de la página (Estética Dark/Neon)
-st.set_page_config(page_title="Dashboard CEI", layout="wide")
+# 1. Conexión a Firebase (Se ejecuta una sola vez)
+if not firebase_admin._apps:
+    firebase_secrets = dict(st.secrets["firebase"])
+    creds = credentials.Certificate(firebase_secrets)
+    firebase_admin.initialize_app(creds)
 
+db = firestore.client()
+
+# 2. Configuración estética "Neon"
+st.set_page_config(page_title="Portal de Gestión CEI", layout="wide")
 st.markdown("""
     <style>
-    .main {
-        background-color: #0E1117;
-        color: #00FFC8; /* Verde Neon */
-    }
-    h1, h2, h3 {
-        color: #FF00E6; /* Rosa Neon */
-        text-shadow: 0 0 10px #FF00E6;
-    }
-    .stButton>button {
-        background-color: #FF00E6;
-        color: white;
-        border-radius: 10px;
-    }
+    .main { background-color: #0E1117; color: #00FFC8; }
+    h1, h2, h3 { color: #FF00E6; text-shadow: 0 0 10px #FF00E6; }
+    .stTextInput, .stNumberInput { color: #00FFC8; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Título de la Plataforma
-st.title("🚀 Centro de Emprendimiento: Gestión 360")
+# 3. Menú Lateral
+st.sidebar.title("Navegación")
+area = st.sidebar.selectbox("Seleccione su Área", 
+    ["Inicio", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión"])
 
-# 3. Sidebar para Navegación de Áreas
-menu = st.sidebar.selectbox(
-    "Seleccione Área de Reporte",
-    ["Dashboard Global", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión"]
-)
+# --- MÓDULO: INICIO ---
+if area == "Inicio":
+    st.title("🚀 Bienvenida al Sistema de Gestión CEI")
+    st.write("Por favor, seleccione su área en el menú de la izquierda para ingresar los datos de la semana.")
 
-# 4. Lógica de Navegación
-if menu == "Emprendimiento":
-    st.header("📊 Área de Emprendimiento")
-    col1, col2 = st.columns(2)
+# --- MÓDULO: EMPRENDIMIENTO ---
+elif area == "Emprendimiento":
+    st.title("📊 Área de Emprendimiento")
     
-    with col1:
-        registrados = st.number_input("Total Registrados", min_value=0)
-        completados = st.number_input("Registros Completos", min_value=0)
+    with st.form("form_emprendimiento"):
+        programa = st.selectbox("Programa", ["Pre-incubación", "Incubación", "Aceleración", "Mentores"])
+        col1, col2 = st.columns(2)
         
-    with col2:
-        programa = st.selectbox("Programa", ["Pre-incubación", "Incubación", "Aceleración"])
-        ciudad = st.text_input("Ciudad de Origen")
+        with col1:
+            registrados = st.number_input("Número de Registrados", min_value=0, step=1)
+            completados = st.number_input("Registros de Aplicación Completos", min_value=0, step=1)
+        
+        with col2:
+            ciudad = st.text_input("Ciudad de Origen (Predominante)")
+            fecha = st.date_input("Fecha de Reporte")
 
-    if st.button("Guardar Datos"):
-        # Aquí iría la lógica de: db.collection('emprendimiento').add({...})
-        st.success(f"Datos de {programa} guardados correctamente en Firebase.")
+        submit = st.form_submit_button("Guardar Reporte")
 
-elif menu == "Dashboard Global":
-    st.header("🌐 Indicadores en Tiempo Real")
-    
-    # Ejemplo de gráfico Neon con Plotly
-    df_ejemplo = pd.DataFrame({
-        "Programa": ["Pre-inc", "Inc", "Acel"],
-        "Registrados": [45, 30, 15]
-    })
-    
-    fig = px.bar(df_ejemplo, x='Programa', y='Registrados', 
-                 title="Evolución de Registros",
-                 template="plotly_dark")
-    fig.update_traces(marker_color='#00FFC8') # Color neon
-    
-    st.plotly_chart(fig, use_container_width=True)
+        if submit:
+            # Guardar en la colección 'reportes' de Firebase
+            data = {
+                "area": "Emprendimiento",
+                "programa": programa,
+                "registrados": registrados,
+                "completados": completados,
+                "ciudad": ciudad,
+                "fecha": str(fecha)
+            }
+            db.collection("reportes_cei").add(data)
+            st.success(f"✅ Datos de {programa} guardados con éxito.")
