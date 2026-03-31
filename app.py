@@ -1,119 +1,84 @@
-import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-import pandas as pd
-import plotly.express as px
-from datetime import datetime, timedelta
-
-# --- 1. CONFIGURACIÓN Y ESTILO ECO-DARK ---
-st.set_page_config(page_title="Misión 3 | Reporte Mensual", layout="wide")
-
-st.markdown("""
-    <style>
-    .main { background-color: #020617; color: #F8FAFC; font-family: 'Inter', sans-serif; }
-    h1, h2, h3 { color: #3B82F6 !important; border-bottom: 1px solid #1E293B; }
-    [data-testid="stMetric"] { background-color: #0F172A; border: 1px solid #1E3A8A; padding: 20px; border-radius: 12px; }
-    .stButton>button { background-color: #1E40AF; color: white; border-radius: 8px; border: none; }
-    /* Estilo para el botón de descarga */
-    .stDownloadButton>button { background-color: #059669 !important; color: white !important; width: 100%; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. CONEXIÓN A FIREBASE ---
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds)
-    except Exception as e:
-        st.error(f"Error de conexión: {e}")
-
-db = firestore.client()
-
-# --- 3. FUNCIONES DE DATOS ---
+# --- 3. FUNCIONES DE DATOS (REPARADA) ---
 def obtener_datos_periodo(coleccion, dias=30):
     try:
         docs = db.collection(coleccion).stream()
         data = []
         for doc in docs:
             d = doc.to_dict()
-            # Convertir timestamp de Firebase a objeto datetime de Python
-            if 'timestamp' in d:
+            # Convertir timestamp de Firebase a datetime de Python
+            if 'timestamp' in d and d['timestamp'] is not None:
                 d['fecha'] = d['timestamp'].replace(tzinfo=None)
+            else:
+                # Si no tiene timestamp, le asignamos la fecha de hoy para que no de error
+                d['fecha'] = datetime.now()
             data.append(d)
         
+        if not data:
+            return pd.DataFrame()
+            
         df = pd.DataFrame(data)
-        if not df.empty:
-            # Filtrar por los últimos 'n' días
-            limite = datetime.now() - timedelta(days=dias)
-            df = df[df['fecha'] >= limite]
+        
+        # Verificación de seguridad: Si la columna fecha no existe por algún motivo, la creamos
+        if 'fecha' not in df.columns:
+            df['fecha'] = datetime.now()
+
+        # Filtrar por los últimos 'n' días
+        limite = datetime.now() - timedelta(days=dias)
+        df = df[df['fecha'] >= limite]
         return df
-    except:
+    except Exception as e:
+        print(f"Error interno: {e}")
         return pd.DataFrame()
 
-# --- 4. NAVEGACIÓN LATERAL ---
-st.sidebar.title("💎 Misión 3")
-periodo = st.sidebar.radio("Ver evolución de:", ["Última Semana", "Último Mes", "Histórico Total"])
-dias_filtro = 7 if periodo == "Última Semana" else 30 if periodo == "Último Mes" else 365
-
-area = st.sidebar.selectbox("Módulos", ["Dashboard Ejecutivo", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión"])
-
-# --- 5. DASHBOARD EJECUTIVO CON EVOLUCIÓN ---
+# --- 5. DASHBOARD EJECUTIVO ---
 if area == "Dashboard Ejecutivo":
     st.title(f"📊 Evolución Estratégica: {periodo}")
     
-    # Carga de datos filtrados
+    # Carga segura de datos
     df_emp = obtener_datos_periodo("emprendimiento", dias_filtro)
     df_vin = obtener_datos_periodo("vinculacion", dias_filtro)
     df_com = obtener_datos_periodo("comunicaciones", dias_filtro)
     df_ges = obtener_datos_periodo("gestion", dias_filtro)
 
-    # KPIs Dinámicos
+    # Verificación de datos antes de calcular métricas
     k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        val = df_emp['registrados'].sum() if not df_emp.empty else 0
-        st.metric("REGISTRADOS", f"{val:,}")
-    with k2:
-        val = len(df_vin) if not df_vin.empty else 0
-        st.metric("NUEVOS ALIADOS", f"{val}")
-    with k3:
-        val = df_com['pauta'].sum() if not df_com.empty else 0
-        st.metric("INVERSIÓN", f"S/. {val:,.0f}")
-    with k4:
-        val = df_ges['presupuesto'].mean() if not df_ges.empty else 0
-        st.metric("EJECUCIÓN", f"{val:.1f}%")
+    
+    # Métricas con validación de existencia de columnas
+    reg_val = df_emp['registrados'].sum() if not df_emp.empty and 'registrados' in df_emp.columns else 0
+    k1.metric("REGISTRADOS", f"{reg_val:,}")
+    
+    ali_val = len(df_vin) if not df_vin.empty else 0
+    k2.metric("NUEVOS ALIADOS", f"{ali_val}")
+    
+    pau_val = df_com['pauta'].sum() if not df_com.empty and 'pauta' in df_com.columns else 0
+    k3.metric("INVERSIÓN", f"S/. {pau_val:,.0f}")
+    
+    # En gestión el campo se llama 'presupuesto'
+    ges_val = df_ges['presupuesto'].mean() if not df_ges.empty and 'presupuesto' in df_ges.columns else 0
+    k4.metric("EJECUCIÓN", f"{ges_val:.1f}%")
 
     st.markdown("---")
 
-    # GRÁFICOS DE EVOLUCIÓN
+    # Gráficos condicionales para evitar más KeyErrors
     col_a, col_b = st.columns(2)
     
     with col_a:
-        st.subheader("📈 Crecimiento de Registros")
-        if not df_emp.empty:
+        if not df_emp.empty and 'fecha' in df_emp.columns and 'registrados' in df_emp.columns:
+            st.subheader("📈 Crecimiento de Registros")
             fig1 = px.line(df_emp.sort_values('fecha'), x='fecha', y='registrados', 
-                          title="Tendencia Temporal", template="plotly_dark", markers=True)
+                          template="plotly_dark", markers=True)
             fig1.update_traces(line_color='#3B82F6')
+            fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig1, use_container_width=True)
+        else:
+            st.info("Sin datos suficientes para mostrar tendencia de registros.")
 
     with col_b:
-        st.subheader("💰 Distribución de Inversión")
-        if not df_com.empty:
+        if not df_com.empty and 'fecha' in df_com.columns and 'pauta' in df_com.columns:
+            st.subheader("💰 Distribución de Inversión")
             fig2 = px.area(df_com.sort_values('fecha'), x='fecha', y='pauta', 
                           template="plotly_dark", color_discrete_sequence=['#10B981'])
+            fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig2, use_container_width=True)
-
-    # BOTÓN DE DESCARGA (ECO-FRIENDLY)
-    st.markdown("### 📥 Exportar Reporte Digital")
-    if not df_emp.empty:
-        csv = df_emp.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Descargar Reporte Consolidado (CSV)",
-            data=csv,
-            file_name=f'Mision3_Reporte_{periodo}.csv',
-            mime='text/csv',
-        )
-    st.caption("Evite imprimir este documento. El ahorro de papel contribuye a la sostenibilidad del planeta. 🌱")
-
-# --- (RESTO DE FORMULARIOS SE MANTIENEN IGUAL QUE LA VERSIÓN ANTERIOR) ---
+        else:
+            st.info("Sin datos suficientes para mostrar inversión.")
