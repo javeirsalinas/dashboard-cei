@@ -5,53 +5,69 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILO PREMIUM ---
-st.set_page_config(page_title="Misión 3 | Gestión Estratégica", layout="wide")
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILO NEÓN EXTREMO ---
+st.set_page_config(page_title="Misión 3 | Dashboard Estratégico", layout="wide")
 
 st.markdown("""
     <style>
-    /* Fondo General y Texto */
-    .main { background-color: #F8FAFC; color: #1E293B; }
+    /* Fondo Negro Profundo */
+    .main { 
+        background-color: #000000; 
+        color: #00FFC8; 
+    }
     
-    /* Títulos con tipografía limpia */
-    h1, h2, h3 { color: #0F172A; font-family: 'Inter', sans-serif; font-weight: 700; }
+    /* Títulos Neón con Resplandor (Glow) */
+    h1, h2, h3 { 
+        color: #FF00E6 !important; 
+        text-shadow: 0 0 15px #FF00E6, 0 0 5px #FF00E6; 
+        font-family: 'Courier New', Courier, monospace;
+    }
     
-    /* Tarjetas de métricas (KPIs) */
+    /* Tarjetas de KPIs Estilo Cyber */
     [data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        background-color: #0A0A0A;
+        border: 1px solid #00FFC8;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
     }
     
-    /* Botones Premium */
-    .stButton>button { 
-        background-color: #2563EB; /* Azul Corporativo */
-        color: white; 
-        border-radius: 8px;
-        border: none;
-        padding: 10px 24px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background-color: #1D4ED8;
-        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+    /* Colores de las métricas */
+    [data-testid="stMetricLabel"] { color: #00FFC8 !important; }
+    [data-testid="stMetricValue"] { 
+        color: #00FFC8 !important; 
+        text-shadow: 0 0 8px #00FFC8; 
+        font-weight: bold;
     }
 
-    /* Inputs y Selectores */
+    /* Botones Rosa Neón */
+    .stButton>button { 
+        background-color: transparent; 
+        color: #FF00E6; 
+        border: 2px solid #FF00E6;
+        border-radius: 0px;
+        font-weight: bold;
+        text-transform: uppercase;
+        box-shadow: 0 0 10px #FF00E6;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #FF00E6;
+        color: black;
+        box-shadow: 0 0 20px #FF00E6;
+    }
+
+    /* Inputs y Selectores Dark */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>select {
-        background-color: #FFFFFF;
-        color: #1E293B;
-        border: 1px solid #CBD5E1;
-        border-radius: 6px;
+        background-color: #111111;
+        color: #00FFC8;
+        border: 1px solid #00FFC8;
     }
     
-    /* Sidebar */
+    /* Sidebar Dark */
     [data-testid="stSidebar"] {
-        background-color: #F1F5F9;
-        border-right: 1px solid #E2E8F0;
+        background-color: #050505;
+        border-right: 1px solid #FF00E6;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -69,60 +85,67 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # --- 3. NAVEGACIÓN LATERAL ---
-st.sidebar.markdown("<h2 style='text-align: left; color: #1E3A8A;'>MISIÓN 3</h2>", unsafe_allow_html=True)
-st.sidebar.markdown("<p style='font-size: 0.8rem; color: #64748B;'>PLATAFORMA DE GESTIÓN V1.0</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<h1 style='font-size: 25px; color: #FF00E6;'>MISIÓN 3</h1>", unsafe_allow_html=True)
 area = st.sidebar.selectbox("Módulos", 
-    ["Dashboard Estratégico", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión Administrativa"])
+    ["Dashboard Estratégico", "Emprendimiento", "Vinculación", "Plataformas", "Comunicaciones", "Gestión"])
 
 # --- 4. FUNCIÓN PARA GUARDAR ---
 def guardar_datos(coleccion, data):
     try:
         data["timestamp"] = datetime.now()
         db.collection(coleccion).add(data)
-        st.toast("✅ Datos sincronizados con éxito", icon='🚀')
+        st.balloons()
+        st.success("✅ DATOS TRANSMITIDOS A MISIÓN 3")
     except Exception as e:
-        st.error(f"Error al guardar: {e}")
+        st.error(f"ERROR EN LA TRANSMISIÓN: {e}")
 
-# --- 5. LÓGICA DE MÓDULOS (FORMULARIOS) ---
+# --- 5. LÓGICA DE MÓDULOS ---
 
 if area == "Dashboard Estratégico":
-    st.title("📊 Dashboard Estratégico Misión 3")
+    st.title("⚡ DASHBOARD ESTRATÉGICO")
     
-    # KPIs Superiores con colores Azul/Gris
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Registrados", "1,850", "+15%", delta_color="normal")
-    m2.metric("Aceleración", "12", "En curso")
-    m3.metric("Presupuesto", "72%", "Ejecutado")
-    m4.metric("Aliados", "45", "+3")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("REGISTRADOS", "1,850", "+15%")
+    col2.metric("ACELERACIÓN", "12", "ACTIVOS")
+    col3.metric("PRESUPUESTO", "72%", "EJECUTADO")
+    col4.metric("ALIADOS", "45", "NUEVOS")
 
-    st.markdown("---")
+    st.markdown("<hr style='border: 1px solid #FF00E6;'>", unsafe_allow_html=True)
     
-    # Gráficos con paleta Azul/Gris
     c1, c2 = st.columns(2)
     
-    # Gráfico 1: Barras Azules
+    # Gráfico 1: Barras Verde Neón
     df_progs = pd.DataFrame({'Prog': ['Pre-Inc', 'Inc', 'Acel'], 'Cant': [80, 50, 20]})
-    fig1 = px.bar(df_progs, x='Prog', y='Cant', title="Evolución de Programas", 
-                 template="plotly_white", color_discrete_sequence=['#3B82F6'])
-    fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    fig1 = px.bar(df_progs, x='Prog', y='Cant', title="EVOLUCIÓN DE PROGRAMAS", 
+                 template="plotly_dark", color_discrete_sequence=['#00FFC8'])
+    fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#00FFC8")
     c1.plotly_chart(fig1, use_container_width=True)
     
-    # Gráfico 2: Pie en Azules y Grises
+    # Gráfico 2: Pie Rosa Neón
     df_aliados = pd.DataFrame({'Tipo': ['Univ', 'Gob', 'Priv'], 'Cant': [15, 10, 8]})
-    fig2 = px.pie(df_aliados, values='Cant', names='Tipo', title="Distribución de Aliados", 
-                 hole=.4, template="plotly_white", color_discrete_sequence=['#1E3A8A', '#64748B', '#94A3B8'])
+    fig2 = px.pie(df_aliados, values='Cant', names='Tipo', title="DISTRIBUCIÓN DE ALIADOS", 
+                 hole=.4, template="plotly_dark", color_discrete_sequence=['#FF00E6', '#00FFC8', '#00D4FF'])
+    fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="#00FFC8")
     c2.plotly_chart(fig2, use_container_width=True)
 
-# [Los demás módulos (Emprendimiento, Vinculación, etc.) se mantienen con la misma lógica pero heredan el estilo visual Premium]
 elif area == "Emprendimiento":
-    st.header("🚀 Programas de Emprendimiento")
+    st.header("🚀 MÓDULO EMPRENDIMIENTO")
     with st.form("form_emp"):
         prog = st.selectbox("Programa", ["Pre-incubación", "Incubación", "Aceleración", "Mentores"])
         c1, c2 = st.columns(2)
         reg = c1.number_input("Total Registrados", min_value=0)
         comp = c2.number_input("Completados", min_value=0)
         city = st.text_input("Ciudad(es)")
-        if st.form_submit_button("Sincronizar Datos"):
+        if st.form_submit_button("SINCRONIZAR"):
             guardar_datos("emprendimiento", {"programa": prog, "registrados": reg, "completados": comp, "ciudades": city})
 
-# (He omitido el resto de los módulos por brevedad, pero conservan su estructura original)
+elif area == "Vinculación":
+    st.header("🤝 MÓDULO VINCULACIÓN")
+    with st.form("form_vin"):
+        atipaq = st.number_input("Registrados ATIPAQ", min_value=0)
+        tipo = st.selectbox("Tipo de Aliado", ["Universidad", "Cámara", "Municipio", "Gobierno", "DER"])
+        nombre = st.text_input("Nombre de la Organización")
+        if st.form_submit_button("GUARDAR ALIANZA"):
+            guardar_datos("vinculacion", {"atipaq": atipaq, "tipo": tipo, "nombre": nombre})
+
+# Los demás módulos se pueden agregar siguiendo este mismo patrón estético.
